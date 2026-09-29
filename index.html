@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IR | Illuminating Reality</title>
+<meta name="description" content="現実に光を当てる。見えているものの奥にある構造を記録する。">
+<style>
+:root{--ink:#222;--muted:#777;--line:#dedbd3;--paper:#f7f5ef;--panel:#fff}
+*{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP","Noto Sans TC",sans-serif;line-height:1.85}
+header{max-width:1080px;margin:auto;padding:64px 24px 36px;border-bottom:1px solid var(--line)}
+.brand{font-family:Georgia,serif;font-size:clamp(30px,5vw,52px);letter-spacing:.04em;margin:0}.brand span{font-size:.38em;letter-spacing:.18em;color:var(--muted);margin-left:12px;white-space:nowrap}
+.lead{margin:22px 0 0;font-size:clamp(17px,2vw,21px)}
+.lang{display:flex;gap:8px;margin-top:28px;flex-wrap:wrap}.lang button{border:0;background:transparent;padding:5px 9px;color:#777;cursor:pointer;font:inherit}.lang button.active{color:#111;border-bottom:1px solid #111}
+main{max-width:1280px;margin:auto;padding:48px 24px 80px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:48px 32px}.entry{min-width:0;max-width:520px;width:100%;margin:0 auto}.card{display:block;width:100%;aspect-ratio:1/1;object-fit:cover;background:#ddd;box-shadow:0 5px 18px rgba(0,0,0,.07)}
+.explain{width:100%;margin-top:14px;padding:11px 12px;border:1px solid var(--line);background:transparent;cursor:pointer;font:inherit;letter-spacing:.05em}.explain:hover{background:#fff}.body{display:none;padding:18px 4px 0;font-size:15px}.body.open{display:block}.body p{margin:0 0 1em}.body strong{font-weight:650}.meta{font-size:12px;color:#999;margin-top:8px}
+footer{max-width:1080px;margin:auto;padding:0 24px 42px;color:#999;font-size:12px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.entry{max-width:560px}header{padding-top:42px}}
+@media(max-width:520px){.grid{grid-template-columns:1fr;gap:42px}main{padding:34px 16px 64px}.entry{max-width:none;margin:auto;width:100%}}
+</style>
+</head>
+<body>
+<header>
+<h1 class="brand">IR <span>ILLUMINATING REALITY</span></h1>
+<p class="lead" data-i18n="lead">現実に光を当てる。<br>見えているものの奥にある構造を記録する。</p>
+<nav class="lang" aria-label="Language"><button class="active" data-lang="ja">日本語</button><button data-lang="en">English</button><button data-lang="zh">繁體中文</button></nav>
+</header>
+<main>
+<section class="grid" id="grid">
+  <p id="loading">カードを読み込んでいます…</p>
+</section>
+</main>
+<footer>IR | Illuminating Reality</footer>
+
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQlJ-EOgRQ3zdrGZw5mFuPOpovCSPZREkVwa1xw5Dhh28SncxTmVkC5fteHO1CCztgjkzR9j4hJg4PH/pub?gid=0&single=true&output=csv';
+
+const text = {
+  ja: {
+    lead:'現実に光を当てる。<br>見えているものの奥にある構造を記録する。',
+    open:'カード解説を見る',
+    close:'カード解説を閉じる',
+    loading:'カードを読み込んでいます…',
+    error:'カードデータを読み込めませんでした。'
+  },
+  en: {
+    lead:'Shine a light on reality.<br>Record the structures behind what we see.',
+    open:'Read the card notes',
+    close:'Close the card notes',
+    loading:'Loading cards…',
+    error:'Could not load the card data.'
+  },
+  zh: {
+    lead:'照亮現實。<br>記錄可見事物背後的結構。',
+    open:'查看卡片解說',
+    close:'收起卡片解說',
+    loading:'正在載入卡片…',
+    error:'無法載入卡片資料。'
+  }
+};
+
+let lang = 'ja';
+let rows = [];
+
+const lead = document.querySelector('[data-i18n="lead"]');
+const grid = document.getElementById('grid');
+
+function parseCSV(csv) {
+  const result = [];
+  let row = [], field = '', quoted = false;
+
+  for (let i = 0; i < csv.length; i++) {
+    const c = csv[i];
+    if (quoted) {
+      if (c === '"') {
+        if (csv[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          quoted = false;
+        }
+      } else {
+        field += c;
+      }
+    } else {
+      if (c === '"') {
+        quoted = true;
+      } else if (c === ',') {
+        row.push(field);
+        field = '';
+      } else if (c === '\n') {
+        row.push(field.replace(/\r$/, ''));
+        result.push(row);
+        row = [];
+        field = '';
+      } else {
+        field += c;
+      }
+    }
+  }
+  if (field.length || row.length) {
+    row.push(field.replace(/\r$/, ''));
+    result.push(row);
+  }
+  return result;
+}
+
+function escapeHTML(s='') {
+  return s.replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[ch]);
+}
+
+function descriptionFor(row) {
+  if (lang === 'en') return row.en || row.ja;
+  if (lang === 'zh') return row.zh || row.ja;
+  return row.ja;
+}
+
+function render() {
+  grid.innerHTML = '';
+
+  rows.forEach(row => {
+    const article = document.createElement('article');
+    article.className = 'entry';
+
+    const img = document.createElement('img');
+    img.className = 'card';
+    img.src = `assets/ir-card-${row.no}.png`;
+    img.alt = `IR card ${row.no}: ${row.theme}`;
+    img.loading = 'lazy';
+
+    const button = document.createElement('button');
+    button.className = 'explain';
+    button.type = 'button';
+    button.setAttribute('aria-expanded', 'false');
+    button.textContent = text[lang].open;
+
+    const body = document.createElement('div');
+    body.className = 'body';
+    body.innerHTML = `<p>${escapeHTML(descriptionFor(row)).replace(/\n/g,'<br>')}</p>`;
+
+    button.addEventListener('click', () => {
+      const isOpen = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!isOpen));
+      body.classList.toggle('open', !isOpen);
+      body.style.display = !isOpen ? 'block' : 'none';
+      button.textContent = !isOpen ? text[lang].close : text[lang].open;
+    });
+
+    article.append(img, button, body);
+    grid.appendChild(article);
+  });
+}
+
+function setLang(l) {
+  lang = l;
+  document.documentElement.lang = l === 'zh' ? 'zh-Hant' : l;
+  lead.innerHTML = text[l].lead;
+  document.querySelectorAll('[data-lang]').forEach(x =>
+    x.classList.toggle('active', x.dataset.lang === l)
+  );
+  if (rows.length) render();
+  else {
+    const loading = document.getElementById('loading');
+    if (loading) loading.textContent = text[l].loading;
+  }
+}
+
+document.querySelectorAll('[data-lang]').forEach(x =>
+  x.addEventListener('click', () => setLang(x.dataset.lang))
+);
+
+async function loadCards() {
+  try {
+    const response = await fetch(CSV_URL, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const csv = await response.text();
+    const table = parseCSV(csv);
+
+    rows = table.slice(1)
+      .filter(r => (r[0] || '').trim())
+      .map(r => ({
+        no: (r[0] || '').trim().padStart(3, '0'),
+        theme: (r[1] || '').trim(),
+        ja: r[2] || '',
+        en: r[3] || '',
+        zh: r[4] || ''
+      }))
+      .reverse();
+
+    render();
+  } catch (err) {
+    grid.innerHTML = `<p>${text[lang].error}</p>`;
+    console.error(err);
+  }
+}
+
+setLang('ja');
+loadCards();
+</script>
+
+</body></html>
