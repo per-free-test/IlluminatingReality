@@ -125,8 +125,8 @@ function render() {
 
     const img = document.createElement('img');
     img.className = 'card';
-    img.src = `assets/ir-card-${row.no}.png`;
-    img.alt = `IR card ${row.no}: ${row.theme}`;
+    img.src = `assets/IR-${row.date}.png`;
+img.alt = `IR ${row.date}: ${row.theme}`;
     img.loading = 'lazy';
 
     const button = document.createElement('button');
@@ -180,7 +180,7 @@ async function loadCards() {
     rows = table.slice(1)
       .filter(r => (r[0] || '').trim())
       .map(r => ({
-        no: (r[0] || '').trim().padStart(3, '0'),
+       date: (r[0] || '').trim(),
         theme: (r[1] || '').trim(),
         ja: r[2] || '',
         en: r[3] || '',
